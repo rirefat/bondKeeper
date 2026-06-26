@@ -1,0 +1,6 @@
+{
+  "name": "BondKeeper",
+  "description": "Track and auto-check Bangladesh Prize Bonds against recent raffle draws using AI-powered drawing result parsing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
