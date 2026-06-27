@@ -26,3 +26,19 @@ export interface MatchResult {
   prizeCategory: '1st' | '2nd' | '3rd' | '4th' | '5th';
   prizeAmount: number; // in BDT
 }
+
+export interface UserAccount {
+  email: string;
+  name: string;
+  role: 'general' | 'admin';
+  passwordHash: string; // stored directly or as basic password
+  createdAt: string;
+}
+
+export interface UserSession {
+  email: string;
+  name: string;
+  role: 'general' | 'admin';
+  createdAt: string;
+}
+

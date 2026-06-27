@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { DrawResult, PrizeBond, MatchResult } from '../types';
 import { PRIZE_AMOUNTS } from '../data/initialDraws';
-import { Award, Calendar, FileText, CheckCircle2, Sparkles, Loader2, Plus, AlertCircle, Trash2, HelpCircle } from 'lucide-react';
+import { Award, Calendar, FileText, CheckCircle2, Sparkles, Loader2, Plus, AlertCircle, Trash2, HelpCircle, Lock } from 'lucide-react';
 
 interface RaffleCheckerProps {
   bonds: PrizeBond[];
@@ -9,9 +9,11 @@ interface RaffleCheckerProps {
   onAddDraw: (draw: DrawResult) => void;
   onDeleteDraw: (id: string) => void;
   matchResults: MatchResult[];
+  userRole: 'general' | 'admin';
+  onSwitchToAdmin: () => void;
 }
 
-export default function RaffleChecker({ bonds, draws, onAddDraw, onDeleteDraw, matchResults }: RaffleCheckerProps) {
+export default function RaffleChecker({ bonds, draws, onAddDraw, onDeleteDraw, matchResults, userRole, onSwitchToAdmin }: RaffleCheckerProps) {
   // Parsing states
   const [rawText, setRawText] = useState('');
   const [drawTitleHint, setDrawTitleHint] = useState('');
@@ -182,7 +184,7 @@ export default function RaffleChecker({ bonds, draws, onAddDraw, onDeleteDraw, m
                         {matchesCount} Won
                       </span>
                     )}
-                    {draws.length > 1 && (
+                    {draws.length > 1 && userRole === 'admin' && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -207,19 +209,40 @@ export default function RaffleChecker({ bonds, draws, onAddDraw, onDeleteDraw, m
         </div>
 
         {/* AI & MANUAL DRAW ADDER */}
-        <div className="bg-white/60 backdrop-blur-md rounded-2xl p-5 border border-white/50 shadow-sm flex-1">
-          <div className="flex items-center justify-between mb-3.5">
-            <h2 className="text-md font-semibold tracking-tight text-slate-900 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-amber-500" />
-              Add New Draw Results
-            </h2>
-            <button
-              onClick={() => setShowManualForm(!showManualForm)}
-              className="text-[11px] text-blue-600 font-medium hover:underline cursor-pointer"
-            >
-              {showManualForm ? "Switch to AI Parser" : "Add Manually"}
-            </button>
-          </div>
+        <div className="bg-white/60 backdrop-blur-md rounded-2xl p-5 border border-white/50 shadow-sm flex-1 flex flex-col justify-between relative overflow-hidden">
+          {userRole !== 'admin' ? (
+            <div className="flex flex-col items-center justify-center h-full py-12 px-4 text-center">
+              <div className="w-14 h-14 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-500 mb-4 border border-indigo-100 shadow-xs">
+                <Lock className="w-6 h-6" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-800">Admin Control Panel Restricted</h3>
+              <p className="text-[11px] text-slate-500 mt-2 leading-relaxed max-w-xs">
+                Adding, parsing, or deleting official Bangladesh Prize Bond draw results is restricted to System Administrators.
+              </p>
+              <p className="text-[10px] text-slate-400 mt-1.5">
+                You are currently browsing under the <strong className="font-semibold text-slate-600">General User</strong> profile.
+              </p>
+              <button
+                onClick={onSwitchToAdmin}
+                className="mt-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] py-2 px-4 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5" /> Switch to Admin Profile
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between mb-3.5">
+                <h2 className="text-md font-semibold tracking-tight text-slate-900 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-500" />
+                  Add New Draw Results
+                </h2>
+                <button
+                  onClick={() => setShowManualForm(!showManualForm)}
+                  className="text-[11px] text-blue-600 font-medium hover:underline cursor-pointer"
+                >
+                  {showManualForm ? "Switch to AI Parser" : "Add Manually"}
+                </button>
+              </div>
 
           {parserError && (
             <div className="bg-rose-500/10 border border-rose-500/20 text-rose-700 text-xs px-3 py-2 rounded-lg mb-3 flex items-start gap-2">
@@ -376,7 +399,8 @@ export default function RaffleChecker({ bonds, draws, onAddDraw, onDeleteDraw, m
               </button>
             </form>
           )}
-
+          </>
+          )}
         </div>
       </div>
 

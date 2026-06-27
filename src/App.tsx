@@ -5,29 +5,90 @@ import Dashboard from './components/Dashboard';
 import MyBonds from './components/MyBonds';
 import RaffleChecker from './components/RaffleChecker';
 import Winners from './components/Winners';
-import { LayoutDashboard, Layers, CalendarRange, Trophy, ArrowUpRight, ArrowDownLeft, Moon, Sun, Download, Upload } from 'lucide-react';
+import { LayoutDashboard, Layers, CalendarRange, Trophy, ArrowUpRight, ArrowDownLeft, Moon, Sun, Download, Upload, Shield, ShieldAlert, ShieldCheck, UserCheck, LogOut } from 'lucide-react';
+import AuthGateway from './components/AuthGateway';
+import { UserSession } from './types';
 
 export default function App() {
   // Navigation tabs
   const [activeTab, setActiveTab] = useState<'dashboard' | 'portfolio' | 'draws' | 'winners'>('dashboard');
 
-  // Loaded Prize Bonds from localStorage
+  // User Session State
+  const [currentUser, setCurrentUser] = useState<UserSession | null>(() => {
+    const saved = localStorage.getItem('bondkeeper_session');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
+
+  const handleLogin = (session: UserSession) => {
+    setCurrentUser(session);
+    localStorage.setItem('bondkeeper_session', JSON.stringify(session));
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('bondkeeper_session');
+  };
+
+  const handleSwitchToAdmin = () => {
+    const adminSession: UserSession = {
+      email: 'admin@bondkeeper.com',
+      name: 'Administrator',
+      role: 'admin',
+      createdAt: new Date().toISOString()
+    };
+    handleLogin(adminSession);
+  };
+
+  const userRole = currentUser?.role || 'general';
+
+  // Loaded Prize Bonds from localStorage (isolated by user email)
   const [bonds, setBonds] = useState<PrizeBond[]>([]);
 
   // Stored Raffle Draws (initialize with sample draws, fallback to localStorage if updated)
   const [draws, setDraws] = useState<DrawResult[]>([]);
 
-  // Load state on mount
+  // Load state on mount/session-change
   useEffect(() => {
-    const storedBonds = localStorage.getItem('bondkeeper_bonds') || localStorage.getItem('bondvault_bonds');
+    if (!currentUser) {
+      setBonds([]);
+      return;
+    }
+
+    const userBondsKey = `bondkeeper_bonds_${currentUser.email}`;
+    const storedBonds = localStorage.getItem(userBondsKey);
     if (storedBonds) {
       try {
         setBonds(JSON.parse(storedBonds));
       } catch (e) {
-        console.error('Failed to parse stored bonds', e);
+        console.error('Failed to parse user bonds', e);
+        setBonds([]);
+      }
+    } else {
+      // Seed default demo bonds for legacy or default test accounts if empty
+      const legacyBonds = localStorage.getItem('bondkeeper_bonds') || localStorage.getItem('bondvault_bonds');
+      if (legacyBonds && (currentUser.email === 'admin@bondkeeper.com' || currentUser.email === 'user@bondkeeper.com')) {
+        try {
+          const parsed = JSON.parse(legacyBonds);
+          setBonds(parsed);
+          localStorage.setItem(userBondsKey, legacyBonds);
+        } catch {
+          setBonds([]);
+        }
+      } else {
+        setBonds([]);
       }
     }
+  }, [currentUser]);
 
+  // Load global draws once on mount
+  useEffect(() => {
     const storedDraws = localStorage.getItem('bondkeeper_draws') || localStorage.getItem('bondvault_draws');
     if (storedDraws) {
       try {
@@ -44,13 +105,16 @@ export default function App() {
   // Save state on updates
   const saveBonds = (newBonds: PrizeBond[]) => {
     setBonds(newBonds);
-    localStorage.setItem('bondkeeper_bonds', JSON.stringify(newBonds));
+    if (currentUser) {
+      localStorage.setItem(`bondkeeper_bonds_${currentUser.email}`, JSON.stringify(newBonds));
+    }
   };
 
   const saveDraws = (newDraws: DrawResult[]) => {
     setDraws(newDraws);
     localStorage.setItem('bondkeeper_draws', JSON.stringify(newDraws));
   };
+
 
   // Portfolio Handlers
   const handleAddBonds = (newBondsRaw: Omit<PrizeBond, 'id' | 'createdAt'>[]) => {
@@ -201,18 +265,22 @@ export default function App() {
     return matches;
   }, [bonds, draws]);
 
+  if (!currentUser) {
+    return <AuthGateway onLogin={handleLogin} />;
+  }
+
   return (
     <div 
-      className="min-h-screen bg-[#f3f5f8] font-sans flex text-[#1d1d1f] antialiased selection:bg-sky-500/20"
+      className="min-h-screen bg-[#f3f5f8] font-sans flex text-[#1d1d1f] antialiased selection:bg-sky-500/20 print:bg-white print:text-black print:min-h-0"
       style={{
         backgroundImage: 'radial-gradient(circle at 0% 0%, #e0f2fe 0%, transparent 45%), radial-gradient(circle at 100% 100%, #e0e7ff 0%, transparent 45%)'
       }}
       id="app-container"
     >
-      <div className="flex w-full max-w-7xl mx-auto my-0 md:my-6 md:rounded-3xl border-0 md:border border-white/40 shadow-2xl overflow-hidden bg-slate-50/20 backdrop-blur-3xl flex-col md:flex-row">
+      <div className="flex w-full max-w-[97%] mx-auto my-0 md:my-6 md:rounded-3xl border-0 md:border border-white/40 shadow-2xl overflow-hidden bg-slate-50/20 backdrop-blur-3xl flex-col md:flex-row print:my-0 print:border-none print:shadow-none print:bg-white print:backdrop-blur-none print:max-w-none print:w-full">
         
         {/* SIDEBAR: macOS Glass Navigation & Utilities */}
-        <aside className="w-full md:w-64 bg-white/40 backdrop-blur-xl border-b md:border-b-0 md:border-r border-white/20 flex flex-col p-5 shrink-0">
+        <aside className="w-full md:w-64 bg-white/40 backdrop-blur-xl border-b md:border-b-0 md:border-r border-white/20 flex flex-col p-5 shrink-0 print:hidden">
           
           {/* macOS window circles */}
           <div className="flex items-center gap-2 mb-6 md:mb-8">
@@ -227,6 +295,42 @@ export default function App() {
             <span className="text-[10px] bg-slate-200/60 font-semibold px-2 py-0.5 rounded-full text-slate-500 ml-auto">
               v1.0
             </span>
+          </div>
+
+          {/* User Session Profile Card */}
+          <div className="mb-6 p-4 bg-white/50 rounded-2xl border border-white/60 shadow-2xs flex flex-col gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className={`w-8.5 h-8.5 rounded-full flex items-center justify-center text-white shrink-0 shadow-xs font-bold text-xs transition-all ${
+                userRole === 'admin' 
+                  ? 'bg-indigo-600 border border-indigo-500/20' 
+                  : 'bg-sky-500 border border-sky-400/20'
+              }`}>
+                {userRole === 'admin' ? <Shield className="w-4.5 h-4.5" /> : <UserCheck className="w-4.5 h-4.5" />}
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-black text-slate-900 tracking-tight leading-tight truncate">
+                  {currentUser.name}
+                </span>
+                <span className={`text-[9px] font-bold mt-0.5 px-1.5 py-0.5 rounded-md w-max uppercase tracking-wide leading-none ${
+                  userRole === 'admin' 
+                    ? 'bg-indigo-50 text-indigo-700 border border-indigo-100/50' 
+                    : 'bg-sky-50 text-sky-700 border border-sky-100/50'
+                }`}>
+                  {userRole === 'admin' ? 'System Admin' : 'General User'}
+                </span>
+              </div>
+            </div>
+
+            <div className="text-[10px] text-slate-400 font-semibold truncate px-1 border-t border-slate-200/30 pt-2">
+              {currentUser.email}
+            </div>
+            
+            <button
+              onClick={handleLogout}
+              className="w-full text-center py-1.5 rounded-xl text-[10px] font-bold cursor-pointer transition-all bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center gap-1.5 shadow-3xs"
+            >
+              <LogOut className="w-3.5 h-3.5" /> Log Out
+            </button>
           </div>
           
           {/* Main Navigation Links */}
@@ -320,10 +424,10 @@ export default function App() {
         </aside>
 
         {/* MAIN DISPLAY PORT */}
-        <main className="flex-1 flex flex-col overflow-hidden min-h-0 bg-slate-50/10">
+        <main className="flex-1 flex flex-col overflow-hidden min-h-0 bg-slate-50/10 print:bg-white print:overflow-visible">
           
           {/* Header Title */}
-          <header className="h-16 flex items-center justify-between px-6 border-b border-slate-200/30">
+          <header className="h-16 flex items-center justify-between px-6 border-b border-slate-200/30 print:hidden">
             <div>
               <h1 className="text-lg font-bold text-slate-900 tracking-tight capitalize">
                 {activeTab === 'dashboard' && 'Overview'}
@@ -354,7 +458,7 @@ export default function App() {
           </header>
 
           {/* Tab content wrapper with smooth scroll */}
-          <div className="p-6 flex-1 overflow-y-auto">
+          <div className="p-6 flex-1 overflow-y-auto print:p-0 print:overflow-visible">
             
             {activeTab === 'dashboard' && (
               <Dashboard 
@@ -363,6 +467,7 @@ export default function App() {
                 matchResults={matchResults}
                 onNavigate={setActiveTab}
                 onInjectDemo={handleInjectDemo}
+                userRole={userRole}
               />
             )}
 
@@ -373,6 +478,7 @@ export default function App() {
                 onDeleteBonds={handleDeleteBonds}
                 onUpdateBond={handleUpdateBond}
                 onClearAll={handleClearAllBonds}
+                userRole={userRole}
               />
             )}
 
@@ -383,6 +489,8 @@ export default function App() {
                 onAddDraw={handleAddDraw}
                 onDeleteDraw={handleDeleteDraw}
                 matchResults={matchResults}
+                userRole={userRole}
+                onSwitchToAdmin={handleSwitchToAdmin}
               />
             )}
 

@@ -8,9 +8,10 @@ interface MyBondsProps {
   onDeleteBonds: (ids: string[]) => void;
   onUpdateBond: (id: string, updatedFields: Partial<PrizeBond>) => void;
   onClearAll: () => void;
+  userRole: 'general' | 'admin';
 }
 
-export default function MyBonds({ bonds, onAddBonds, onDeleteBonds, onUpdateBond, onClearAll }: MyBondsProps) {
+export default function MyBonds({ bonds, onAddBonds, onDeleteBonds, onUpdateBond, onClearAll, userRole }: MyBondsProps) {
   // Input states
   const [activeTab, setActiveTab] = useState<'single' | 'range' | 'bulk'>('single');
   
